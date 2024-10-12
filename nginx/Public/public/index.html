@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD API Test</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="/js/scripts.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 5px 0;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .delete-button {
+            background-color: #dc3545;
+        }
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+        .edit-button {
+            background-color: #ffc107;
+            margin-left: 10px;
+        }
+        .edit-button:hover {
+            background-color: #e0a800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CRUD API Test</h1>
+        <h2>Add New User</h2>
+        <input type="text" id="name" placeholder="Name">
+        <input type="email" id="email" placeholder="Email">
+        <input type="number" id="age" placeholder="Age">
+        <button onclick="addData()">Add User</button>
+
+        <h2>Users</h2>
+        <ul id="data-list"></ul>
+    </div>
+
+    <script>
+        // js/scripts.js
+        async function addData() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const age = document.getElementById('age').value;
+
+            const userData = {
+                studentCode: name, // เปลี่ยนชื่อฟิลด์ตามที่ใช้ใน MongoDB
+                email: email,
+                age: age
+            };
+
+            try {
+                const response = await fetch('/adduser', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(result);
+                    fetchData(); // รีเฟรชข้อมูลหลังจากเพิ่มสำเร็จ
+                } else {
+                    console.error('Error adding user:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function fetchData() {
+            const response = await fetch('/users');
+            const users = await response.json();
+            
+            const dataList = document.getElementById('data-list');
+            dataList.innerHTML = ''; // ล้างรายการก่อน
+
+            users.forEach(user => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${user.studentCode} - ${user.email} - ${user.age}`;
+
+                // สร้างปุ่มลบ
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-button';
+                deleteButton.onclick = () => deleteUser(user._id); // เพิ่มฟังก์ชันลบ
+
+                // สร้างปุ่มแก้ไข
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Edit';
+                editButton.className = 'edit-button';
+                editButton.onclick = () => editUser(user); // เพิ่มฟังก์ชันแก้ไข
+
+                listItem.appendChild(deleteButton);
+                listItem.appendChild(editButton);
+                dataList.appendChild(listItem);
+            });
+        }
+
+        async function deleteUser(id) {
+            try {
+                const response = await fetch(`/deleteuser/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    fetchData(); // รีเฟรชข้อมูลหลังจากลบสำเร็จ
+                } else {
+                    console.error('Error deleting user:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function editUser(user) {
+            // แสดงข้อมูลในฟิลด์กรอก
+            document.getElementById('name').value = user.studentCode;
+            document.getElementById('email').value = user.email;
+            document.getElementById('age').value = user.age;
+
+            // เปลี่ยนปุ่ม 'Add User' เป็น 'Update User'
+            const button = document.querySelector('button');
+            button.textContent = 'Update User';
+            button.onclick = () => updateUser(user._id);
+        }
+
+        async function updateUser(id) {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const age = document.getElementById('age').value;
+
+            const userData = {
+                studentCode: name,
+                email: email,
+                age: age
+            };
+
+            try {
+                const response = await fetch(`/updateuser/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData),
+                });
+
+                if (response.ok) {
+                    fetchData(); // รีเฟรชข้อมูลหลังจากอัปเดตสำเร็จ
+                    resetForm(); // รีเซ็ตฟอร์ม
+                } else {
+                    console.error('Error updating user:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('age').value = '';
+
+            const button = document.querySelector('button');
+            button.textContent = 'Add User';
+            button.onclick = addData;
+        }
+
+        // เรียกใช้ fetchData เพื่อโหลดข้อมูลผู้ใช้เมื่อหน้าเว็บโหลด
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>
+
